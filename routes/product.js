@@ -4,7 +4,7 @@ const { apiConfig, HEADERS } = require("../config");
 const ENDPOINTS = require("../endpoints");
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   const { sku, region } = req.body;
 
   if (!sku || !region)
@@ -165,15 +165,11 @@ router.post("/", async (req, res) => {
       .status(200)
       .send({ hasError: false, data: response?.data?.data?.site?.product });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error fetching product: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message });
+    next(error);
   }
 });
 
-router.post("/metafields/:id", async (req, res) => {
+router.post("/metafields/:id", async (req, res, next) => {
   const { id } = req.params;
   const { region } = req.body;
 
@@ -196,14 +192,7 @@ router.post("/metafields/:id", async (req, res) => {
     );
     res.status(200).send({ hasError: false, data: response?.data });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log(
-      "BFF > Error fetching product metafields: ",
-      parsedErr
-    );
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message });
+    next(error);
   }
 });
 

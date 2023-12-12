@@ -4,7 +4,7 @@ const { apiConfig, HEADERS } = require("../config");
 const ENDPOINTS = require("../endpoints");
 const router = express.Router();
 
-router.get("/:cartId", async (req, res) => {
+router.get("/:cartId", async (req, res, next) => {
   const { cartId = "" } = req.params;
   const { region = "" } = req.body;
 
@@ -26,16 +26,11 @@ router.get("/:cartId", async (req, res) => {
       data: response?.data?.data,
     });
   } catch (error) {
-    console.log(error);
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error fetching cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message || error?.message });
+    next(error);
   }
 });
 
-router.post("/create-cart", async (req, res) => {
+router.post("/create-cart", async (req, res, next) => {
   const { region = "", payload = null } = req.body;
 
   if (!payload || !region)
@@ -60,15 +55,11 @@ router.post("/create-cart", async (req, res) => {
       data: response?.data?.data,
     });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error creating cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message || error?.message });
+    next(error);
   }
 });
 
-router.post("/add-product", async (req, res) => {
+router.post("/add-product", async (req, res, next) => {
   const { region = "", cartId = "", payload = null } = req.body;
 
   if (!cartId || !payload || !region)
@@ -95,15 +86,11 @@ router.post("/add-product", async (req, res) => {
       data: response?.data,
     });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error adding product to cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message || error?.message });
+    next(error);
   }
 });
 
-router.put("/update-cart/:cartId/product/:itemId", async (req, res) => {
+router.put("/update-cart/:cartId/product/:itemId", async (req, res, next) => {
   const { cartId = "", itemId = "" } = req.params;
   const { region = "", payload = null } = req.body;
 
@@ -126,51 +113,46 @@ router.put("/update-cart/:cartId/product/:itemId", async (req, res) => {
       data: response?.data?.data,
     });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error updating product in cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message || error?.message });
+    next(error);
   }
 });
 
-router.put("/update-cart/:cartId/customer/:customerId", async (req, res) => {
-  const { cartId = "", customerId = "" } = req.params;
-  const { region = "" } = req.body;
+router.put(
+  "/update-cart/:cartId/customer/:customerId",
+  async (req, res, next) => {
+    const { cartId = "", customerId = "" } = req.params;
+    const { region = "" } = req.body;
 
-  if (!cartId || !customerId || !region)
-    return res
-      .status(400)
-      .send({ hasError: true, message: "Invalid request." });
+    if (!cartId || !customerId || !region)
+      return res
+        .status(400)
+        .send({ hasError: true, message: "Invalid request." });
 
-  try {
-    const response = await axios.put(
-      `${apiConfig[region].BC_API_DOMAIN}${ENDPOINTS.BIGCOMMERCE.CART.GET_CART(
-        cartId
-      )}`,
-      { customer_id: customerId },
-      {
-        headers: {
-          ...HEADERS.bcRestApis,
-          "X-Auth-Token": apiConfig[region].BC_X_AUTH_TOKEN,
-        },
-      }
-    );
+    try {
+      const response = await axios.put(
+        `${
+          apiConfig[region].BC_API_DOMAIN
+        }${ENDPOINTS.BIGCOMMERCE.CART.GET_CART(cartId)}`,
+        { customer_id: customerId },
+        {
+          headers: {
+            ...HEADERS.bcRestApis,
+            "X-Auth-Token": apiConfig[region].BC_X_AUTH_TOKEN,
+          },
+        }
+      );
 
-    res.status(200).send({
-      hasError: false,
-      data: response?.data?.data,
-    });
-  } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error updating customer in cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message || error?.message });
+      res.status(200).send({
+        hasError: false,
+        data: response?.data?.data,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
-router.delete("/delete-cart/:cartId", async (req, res) => {
+router.delete("/delete-cart/:cartId", async (req, res, next) => {
   const { cartId = "" } = req.params;
   const { region = "" } = req.body;
 
@@ -197,15 +179,11 @@ router.delete("/delete-cart/:cartId", async (req, res) => {
       data: response?.data,
     });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error deleting cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message });
+    next(error);
   }
 });
 
-router.delete("/delete-product/:cartId/:itemId", async (req, res) => {
+router.delete("/delete-product/:cartId/:itemId", async (req, res, next) => {
   const { cartId = "", itemId = "" } = req.params;
   const { region = "" } = req.body;
 
@@ -232,11 +210,7 @@ router.delete("/delete-product/:cartId/:itemId", async (req, res) => {
       data: response?.data?.data,
     });
   } catch (error) {
-    const parsedErr = JSON.parse(JSON.stringify(error)) || {};
-    console.log("BFF > Error deleting product from cart: ", parsedErr);
-    return res
-      .status(parsedErr?.status || 400)
-      .send({ hasError: true, message: parsedErr?.message || error?.message });
+    next(error);
   }
 });
 

@@ -15,6 +15,11 @@ const ENDPOINTS = {
       REMOVE_ITEM_FROM_CART: (cartId, itemId) =>
         `/v3/carts/${cartId}/items/${itemId}?include=redirect_urls`,
     },
+
+    PROMOTIONS: {
+      CREATE_PROMOTION: "/v3/promotions",
+      CREATE_COUPON: (promotionId) => `/v3/promotions/${promotionId}/codes`,
+    },
   },
 };
 
