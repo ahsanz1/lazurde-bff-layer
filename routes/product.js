@@ -174,9 +174,9 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.post("/metafields/:id", async (req, res, next) => {
-  const { id } = req.params;
-  const { region } = req.body;
+router.post("/metafields/:productId", async (req, res, next) => {
+  const { productId = "" } = req.params;
+  const { region = "" } = req.body;
 
   if (!id || !region)
     return res
@@ -186,8 +186,8 @@ router.post("/metafields/:id", async (req, res, next) => {
   try {
     const response = await axios.get(
       `${
-        apiConfig.bigCommerceAPIDomain
-      }${ENDPOINTS.BIGCOMMERCE.PRODUCT.GET_META_FIELDS(id)}`,
+        apiConfig[region].BC_API_DOMAIN
+      }${ENDPOINTS.BIGCOMMERCE.PRODUCT.GET_META_FIELDS(productId)}`,
       {
         headers: {
           ...HEADERS.bcRestApis,
