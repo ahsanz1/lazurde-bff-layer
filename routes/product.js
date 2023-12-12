@@ -161,6 +161,11 @@ router.post("/", async (req, res, next) => {
       data: graphqlQuery,
     });
 
+    console.log(response.data);
+
+    if (!response?.data?.data?.site?.product)
+      throw new Error("Product not found.");
+
     res
       .status(200)
       .send({ hasError: false, data: response?.data?.data?.site?.product });

@@ -3,7 +3,7 @@ const errorHandler = (err, req, res, next) => {
   const parsedErr = JSON.parse(JSON.stringify(err)) || {};
   return res
     .status(parsedErr?.status || 400)
-    .send({ hasError: true, message: parsedErr?.message || error?.message });
+    .send({ hasError: true, message: parsedErr?.message || err?.message });
 };
 
 module.exports = errorHandler;
