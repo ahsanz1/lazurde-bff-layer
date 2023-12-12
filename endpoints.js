@@ -20,6 +20,19 @@ const ENDPOINTS = {
       CREATE_PROMOTION: "/v3/promotions",
       CREATE_COUPON: (promotionId) => `/v3/promotions/${promotionId}/codes`,
     },
+
+    CUSTOMER: {
+      GET_CUSTOMER: "/v3/customers",
+      CUSTOMER_ATTRIBUTES: "/v3/customers/attributes",
+      ATTRIBUTES_BY_CUSTOMER_ID: (id) =>
+        `/v3/customers/attribute-values?customer_id:in=${id}`,
+      CREATE_CUSTOMER: "/v3/customers",
+      UPDATE_ATTRIBUTE_VALUES: `/v3/customers/attribute-values`,
+    },
+
+    KLAVIYO: {
+      EVENTS: "/api/events",
+    },
   },
 };
 
