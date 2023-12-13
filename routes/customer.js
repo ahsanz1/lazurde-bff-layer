@@ -351,7 +351,7 @@ router.post("/verification-email", async (req, res, next) => {
 
 /**
  * updateCustomerApi
- * POST /api/customer/update
+ * PUT /api/customer/update
  * const { payload = null, region = "" } = req.body;
  */
 router.put("/update", async (req, res, next) => {
@@ -390,7 +390,7 @@ router.put("/update", async (req, res, next) => {
 //updateCustomerAttributesApi
 /**
  * updateCustomerAttributesApi
- * POST /api/customer/update/attributes
+ * PUT /api/customer/update/attributes
  * const { payload = null, region = "" } = req.body;
  */
 router.put("/update/attributes", async (req, res, next) => {
