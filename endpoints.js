@@ -29,10 +29,10 @@ const ENDPOINTS = {
       CREATE_CUSTOMER: "/v3/customers",
       UPDATE_ATTRIBUTE_VALUES: `/v3/customers/attribute-values`,
     },
+  },
 
-    KLAVIYO: {
-      EVENTS: "/api/events",
-    },
+  KLAVIYO: {
+    EVENTS: "/api/events",
   },
 };
 

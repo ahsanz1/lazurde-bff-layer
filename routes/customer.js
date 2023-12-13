@@ -3,10 +3,23 @@ const { default: axios } = require("axios");
 const { apiConfig, HEADERS } = require("../config");
 const ENDPOINTS = require("../endpoints");
 const { getCustomerDetailQuery } = require("../lib/gql-queries");
+const {
+  getStoreAttributeId,
+  generateEmailVerificationToken,
+  sha256Hash,
+} = require("../lib/utils");
+const {
+  customerAttributesNames,
+  EMAIL_SUCCESS_CODE,
+} = require("../lib/constants");
 const router = express.Router();
 
-
-//getCustomerByEmail & getCustomerById
+/**
+ * getCustomerByEmail & getCustomerById
+   POST /api/customer
+ * const { email = "", id = "" } = req.query;
+   const { region = "" } = req.body;
+ */
 router.post("/", async (req, res, next) => {
   const { email = "", id = "" } = req.query;
   const { region = "" } = req.body;
@@ -49,7 +62,12 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-//getACustomerDetail
+/**
+ * getACustomerDetail
+ * POST /api/customer/detail/:customerId
+ * const { customerId = "" } = req.params;
+   const { region = "" } = req.body;
+ */
 router.post("/detail/:customerId", async (req, res, next) => {
   const { customerId = "" } = req.params;
   const { region = "" } = req.body;
@@ -80,7 +98,11 @@ router.post("/detail/:customerId", async (req, res, next) => {
   }
 });
 
-//getAllCustomerAttributes
+/**
+ * getAllCustomerAttributes
+ * POST /api/customer/attributes
+ * const { region = "" } = req.body;
+ */
 router.post("/attributes", async (req, res, next) => {
   const { region = "" } = req.body;
 
@@ -105,7 +127,12 @@ router.post("/attributes", async (req, res, next) => {
   }
 });
 
-//getAttributesByCustomerId
+/**
+ * getAttributesByCustomerId 
+ * POST /api/customer/:customerId/attributes
+ * const { customerId = "" } = req.params;
+   const { region = "" } = req.body;
+ */
 router.post("/:customerId/attributes", async (req, res, next) => {
   const { customerId = "" } = req.params;
   const { region = "" } = req.body;
@@ -138,7 +165,11 @@ router.post("/:customerId/attributes", async (req, res, next) => {
   }
 });
 
-//createCustomerApi
+/**
+ * createCustomerApi
+ * POST /api/customer/create
+ * const { payload = null, region = "" } = req.body;
+ */
 router.post("/create", async (req, res, next) => {
   const { payload = null, region = "" } = req.body;
 
@@ -167,8 +198,12 @@ router.post("/create", async (req, res, next) => {
   }
 });
 
-//sendKlaviyoEmail
-router.post("/email", async (req, res, next) => {
+/**
+ * sendKlaviyoEmail
+ * POST /api/customer/email
+ * const { payload = null } = req.body;
+ */
+router.post("/send-email", async (req, res, next) => {
   const { payload = null } = req.body;
 
   if (!payload)
@@ -182,20 +217,146 @@ router.post("/email", async (req, res, next) => {
       payload,
       {
         headers: {
-          Authorization: `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
+          Authorization: `Klaviyo-API-Key ${process.env.KLAVIYO_API_KEY}`,
           revision: apiConfig.klaviyoAPIrevision,
         },
       }
     );
-    return klaviyoEmailRes.status;
+    res.status(200).send({
+      hasError: false,
+      status: klaviyoEmailRes.status,
+    });
   } catch (error) {
     next(error);
   }
 });
 
-//updateCustomerApi
+/**
+ * sendVerificationEmail
+ * POST /api/customer/verification-email
+ *  const {
+    region = "",
+    currentDomain = "",
+    customerId = "",
+    email = "",
+    first_name = "",
+    lang = "",
+  } = req.body;
+ */
+
+router.post("/verification-email", async (req, res, next) => {
+  const {
+    region = "",
+    currentDomain = "",
+    customerId = "",
+    email = "",
+    first_name = "",
+    lang = "",
+  } = req.body;
+
+  try {
+    const customerHash = sha256Hash(`${email}${Date.now().toString()}`);
+
+    let protocol = "https";
+    if (req.hostname === "localhost") protocol = "http";
+
+    //all customer attributes on store
+    const storeAttributesRes = await axios.post(
+      `${protocol}://${req.hostname}:${
+        process.env.PORT || 4000
+      }/api/customer/attributes`,
+      {
+        region,
+      }
+    );
+
+    const upsertVerificationOTTpayload = {
+      customer_id: customerId,
+      attribute_id: getStoreAttributeId(
+        storeAttributesRes?.data?.data,
+        customerAttributesNames?.verificationEmailOTT
+      ), // the attribute id of the OTT attribute you created earlier
+      value: customerHash,
+    };
+
+    const upsertVerificationOTTRes = await axios.put(
+      `${protocol}://${req.hostname}:${
+        process.env.PORT || 4000
+      }/api/customer/update/attributes`,
+      {
+        payload: [upsertVerificationOTTpayload],
+        region,
+      }
+    );
+
+    if (upsertVerificationOTTRes.hasError)
+      throw new Error("Could not update customer with OTT value");
+
+    const emailVerificationToken = generateEmailVerificationToken(
+      customerId,
+      email,
+      upsertVerificationOTTRes.data[0]?.attribute_value,
+      region,
+      first_name,
+      lang
+    );
+
+    const verificationEmailPayload = {
+      data: {
+        type: "event",
+        attributes: {
+          profile: {
+            $email: email,
+            $first_name: first_name,
+          },
+          metric: {
+            name: "Email Verification",
+          },
+          properties: {
+            emailVerificationLink: `${currentDomain}/api/customer/verify?token=${emailVerificationToken}&region=${region}&lang=${lang}`,
+            lang,
+            region,
+          },
+          time: new Date().toISOString(),
+          unique_id: new Date().getTime().toString(),
+        },
+      },
+    };
+
+    // const emailStatus = await sendKlaviyoEmail(verificationEmailPayload);
+
+    const emailStatus = await axios.post(
+      `${protocol}://${req.hostname}:${
+        process.env.PORT || 4000
+      }/api/customer/send-email`,
+      {
+        payload: verificationEmailPayload,
+      }
+    );
+
+    if (
+      !emailStatus?.data?.hasError &&
+      emailStatus?.data?.status === EMAIL_SUCCESS_CODE
+    ) {
+      res.status(200).json({
+        emailSent: true,
+      });
+    } else {
+      throw new Error("Could not send password reset email!");
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * updateCustomerApi
+ * POST /api/customer/update
+ * const { payload = null, region = "" } = req.body;
+ */
 router.put("/update", async (req, res, next) => {
   const { payload = null, region = "" } = req.body;
+  console.log("Payload: ", payload);
 
   if (!region || !payload)
     return res
@@ -227,6 +388,11 @@ router.put("/update", async (req, res, next) => {
 });
 
 //updateCustomerAttributesApi
+/**
+ * updateCustomerAttributesApi
+ * POST /api/customer/update/attributes
+ * const { payload = null, region = "" } = req.body;
+ */
 router.put("/update/attributes", async (req, res, next) => {
   const { payload = null, region = "" } = req.body;
   try {
